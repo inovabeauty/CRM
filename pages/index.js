@@ -309,6 +309,49 @@ export default function Home() {
     }
   };
 
+  // Otimizador de Trajeto Inteligente (Menor Distância via Nearest Neighbor)
+  const handleOptimizeRouteOrder = () => {
+    if (routeList.length < 2) return;
+
+    let unvisited = [...routeList];
+    const optimized = [];
+
+    const runNearestNeighbor = (startLat, startLng) => {
+      let currentLat = startLat;
+      let currentLng = startLng;
+
+      while (unvisited.length > 0) {
+        unvisited.sort((a, b) => {
+          const distA = getDistance(currentLat, currentLng, parseFloat(a.latitude), parseFloat(a.longitude));
+          const distB = getDistance(currentLat, currentLng, parseFloat(b.latitude), parseFloat(b.longitude));
+          return distA - distB;
+        });
+        const nearest = unvisited.shift();
+        optimized.push(nearest);
+        currentLat = parseFloat(nearest.latitude);
+        currentLng = parseFloat(nearest.longitude);
+      }
+      setRouteList(optimized);
+      alert('⚡ Trajeto otimizado com sucesso! As paradas foram reordenadas pelo menor trajeto.');
+    };
+
+    if (typeof window !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => runNearestNeighbor(pos.coords.latitude, pos.coords.longitude),
+        () => {
+          const first = unvisited.shift();
+          optimized.push(first);
+          runNearestNeighbor(parseFloat(first.latitude), parseFloat(first.longitude));
+        },
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    } else {
+      const first = unvisited.shift();
+      optimized.push(first);
+      runNearestNeighbor(parseFloat(first.latitude), parseFloat(first.longitude));
+    }
+  };
+
   // Disparo dos Modais de Vendas
   const handleOpenWhatsAppScripts = (client) => {
     setSelectedClient(client);
@@ -515,6 +558,7 @@ export default function Home() {
         onClearRoute={() => setRouteList([])}
         onStartNavigation={startGoogleMapsRoute}
         onAutoAddNearest={addAllFilteredToRoute}
+        onOptimizeRouteOrder={handleOptimizeRouteOrder}
       />
 
       {/* 9. Modal de Cadastro Rápido (Drop Pin) */}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Circle, Popup, useMap, useMapEvents, ZoomControl } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
@@ -15,13 +15,14 @@ const getIconColor = (status) => {
     case 'cliente_ativo': return 'bg-green-500';
     case 'alerta_resgate': return 'bg-red-500 animate-pulse';
     case 'negociacao': return 'bg-yellow-500';
+    case 'em_atraso': return 'bg-red-700';
     case 'nao_visitar': return 'bg-gray-800 opacity-50';
     default: return 'bg-blue-500';
   }
 };
 
-// Ícone customizado incluindo selo de verificação recente (Check), destaque de cartão virando, alerta ERP e localização pendente
-const createCustomIcon = (status, ultimaInteracao, isCardDue, isCreditBlocked, isGpsPending) => {
+// Ícone customizado incluindo selo de visita realizada hoje, verificação recente (Check), destaque de cartão virando, alerta ERP e localização pendente
+const createCustomIcon = (status, ultimaInteracao, isCardDue, isCreditBlocked, isGpsPending, isVisitedToday) => {
   if (isGpsPending) {
     return L.divIcon({
       className: 'bg-transparent',
@@ -30,6 +31,18 @@ const createCustomIcon = (status, ultimaInteracao, isCardDue, isCreditBlocked, i
       </div>`,
       iconSize: [24, 24],
       iconAnchor: [12, 12]
+    });
+  }
+
+  // Se já foi visitado hoje: pino com verde esmeralda suave, anel indicador e opacidade sutil (deixa outros salões pendentes brilharem)
+  if (isVisitedToday) {
+    return L.divIcon({
+      className: 'bg-transparent',
+      html: `<div class="relative w-5 h-5 rounded-full border-2 border-emerald-400 bg-emerald-600 shadow-md flex items-center justify-center ring-2 ring-emerald-500/30 opacity-70">
+        <span class="text-[10px] font-extrabold text-white leading-none">✓</span>
+      </div>`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10]
     });
   }
 
@@ -96,6 +109,9 @@ function MapClickHandler({ isAddingMode, onMapClick, repositioningClient, onRepo
 // Manipulação de câmera e foco
 function MapController({ searchTarget, userLoc, radiusMode, clients, cityFilter, repositioningClient, flyToCoords }) {
   const map = useMap();
+  const lastFittedCityRef = useRef(null);
+  const lastSearchTargetIdRef = useRef(null);
+  const lastRadiusTriggeredRef = useRef(false);
 
   useEffect(() => {
     if (flyToCoords) {
@@ -110,28 +126,40 @@ function MapController({ searchTarget, userLoc, radiusMode, clients, cityFilter,
   }, [repositioningClient, map]);
 
   useEffect(() => {
-    if (searchTarget && searchTarget.latitude && searchTarget.longitude) {
+    if (searchTarget && searchTarget.id !== lastSearchTargetIdRef.current && searchTarget.latitude && searchTarget.longitude) {
+      lastSearchTargetIdRef.current = searchTarget.id;
       map.flyTo([parseFloat(searchTarget.latitude), parseFloat(searchTarget.longitude)], 18, { duration: 1.5 });
     }
   }, [searchTarget, map]);
   
   useEffect(() => {
-    if (userLoc && radiusMode) {
+    if (radiusMode && userLoc && !lastRadiusTriggeredRef.current) {
+      lastRadiusTriggeredRef.current = true;
       map.flyTo(userLoc, 14, { duration: 1.5 });
+    } else if (!radiusMode) {
+      lastRadiusTriggeredRef.current = false;
     }
-  }, [userLoc, radiusMode, map]);
+  }, [radiusMode, userLoc, map]);
 
+  // Ajusta o enquadramento (bounds) APENAS quando a cidade selecionada mudar
   useEffect(() => {
-    if (!radiusMode && !searchTarget && !repositioningClient && !flyToCoords && cityFilter && clients && clients.length > 0) {
+    if (!cityFilter) {
+      lastFittedCityRef.current = null;
+      return;
+    }
+
+    if (cityFilter !== lastFittedCityRef.current && clients && clients.length > 0) {
       const coords = clients
         .filter(c => c.latitude && c.longitude)
         .map(c => [parseFloat(c.latitude), parseFloat(c.longitude)]);
+      
       if (coords.length > 0) {
+        lastFittedCityRef.current = cityFilter;
         const bounds = L.latLngBounds(coords);
         map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
       }
     }
-  }, [cityFilter, clients, radiusMode, searchTarget, repositioningClient, flyToCoords, map]);
+  }, [cityFilter, clients, map]);
 
   return null;
 }
@@ -205,7 +233,13 @@ export default function LeafletMap({
           }
 
           if (categoryFilter) query = query.contains('categorias', [categoryFilter]);
-          if (funnelFilter) query = query.eq('status_funil', funnelFilter);
+          if (funnelFilter) {
+            if (funnelFilter === 'em_atraso' || funnelFilter === 'inadimplente_erp') {
+              query = query.or('status_funil.eq.em_atraso,boleto_atrasado.eq.true');
+            } else {
+              query = query.eq('status_funil', funnelFilter);
+            }
+          }
 
           const { data, error } = await query;
           if (error) {
@@ -233,7 +267,13 @@ export default function LeafletMap({
               filtered = filtered.filter(c => allowedCities.includes(c.cidade));
             }
             if (categoryFilter) filtered = filtered.filter(c => c.categorias?.includes(categoryFilter));
-            if (funnelFilter) filtered = filtered.filter(c => c.status_funil === funnelFilter);
+            if (funnelFilter) {
+              if (funnelFilter === 'em_atraso' || funnelFilter === 'inadimplente_erp') {
+                filtered = filtered.filter(c => c.status_funil === 'em_atraso' || c.boleto_atrasado === true);
+              } else {
+                filtered = filtered.filter(c => c.status_funil === funnelFilter);
+              }
+            }
             setClients(filtered);
             if (onClientsLoaded) onClientsLoaded(filtered);
           }
@@ -273,6 +313,10 @@ export default function LeafletMap({
   // Por padrão, oculta salões que fecharam ou não existem mais (inativos), a menos que o filtro de funil seja especificamente 'nao_visitar'
   if (funnelFilter !== 'nao_visitar') {
     displayedClients = displayedClients.filter((c) => c.status_funil !== 'nao_visitar');
+  }
+
+  if (funnelFilter === 'em_atraso' || funnelFilter === 'inadimplente_erp') {
+    displayedClients = displayedClients.filter((c) => c.status_funil === 'em_atraso' || c.boleto_atrasado === true);
   }
 
   if (returnFilter) {
@@ -555,11 +599,12 @@ export default function LeafletMap({
         >
           {displayedClients.map((c) => {
             const isCardDue = c.melhor_dia_compra ? nextDays.includes(parseInt(c.melhor_dia_compra)) : false;
+            const isVisitedToday = c.data_ultima_interacao && c.data_ultima_interacao.startsWith(hojeIso);
             return (
               <Marker 
                 key={c.id} 
                 position={[parseFloat(c.latitude), parseFloat(c.longitude)]} 
-                icon={createCustomIcon(c.status_funil, c.data_ultima_interacao, isCardDue, c.boleto_atrasado, c.localizacao_pendente)} 
+                icon={createCustomIcon(c.status_funil, c.data_ultima_interacao, isCardDue, c.boleto_atrasado, c.localizacao_pendente, isVisitedToday)} 
                 eventHandlers={{ click: () => window.dispatchEvent(new CustomEvent('openClientCard', { detail: c })) }} 
               />
             );

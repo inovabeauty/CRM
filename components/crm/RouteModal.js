@@ -5,7 +5,8 @@ export default function RouteModal({
   onRemoveFromRoute,
   onClearRoute,
   onStartNavigation,
-  onAutoAddNearest
+  onAutoAddNearest,
+  onOptimizeRouteOrder
 }) {
   if (!isOpen) return null;
 
@@ -47,6 +48,17 @@ export default function RouteModal({
               <span>⚡</span> Menor Distância
             </button>
           </div>
+
+          {/* Botão de Otimizar Ordem da Rota (se tiver 2 ou mais paradas) */}
+          {routeList.length >= 2 && (
+            <button
+              onClick={onOptimizeRouteOrder}
+              className="btn btn-sm btn-accent w-full shadow-xs text-xs font-bold gap-1.5 rounded-xl mt-1 text-accent-content"
+              title="Reordena as paradas existentes pelo menor percurso a partir do seu GPS"
+            >
+              <span>⚡</span> Otimizar Trajeto ({routeList.length} paradas)
+            </button>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-2.5">

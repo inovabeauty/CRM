@@ -460,28 +460,28 @@ export default function ClientDrawer({
           </div>
         </div>
       ) : (
-        /* MODO VISUALIZAÇÃO COMPLETO - DESIGN REFINADO MOBILE FIRST */
-        <div className="space-y-3 pb-6 md:pb-2">
+        /* MODO VISUALIZAÇÃO COMPLETO - DESIGN REFINADO MOBILE FIRST COMPACTO */
+        <div className="space-y-2 pb-4 md:pb-2">
           
           {/* Alça visual de Bottom Sheet para celular */}
-          <div className="w-12 h-1 rounded-full bg-base-300 mx-auto -mt-1 mb-2 shrink-0"></div>
+          <div className="w-10 h-1 rounded-full bg-base-300 mx-auto -mt-1 mb-1.5 shrink-0"></div>
 
           {/* Cabeçalho */}
           <div className="flex justify-between items-start gap-2">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <h2 className="text-lg md:text-xl font-extrabold text-base-content leading-tight truncate">
+                <h2 className="text-base md:text-lg font-extrabold text-base-content leading-tight truncate">
                   {client.nome}
                 </h2>
 
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-1 shrink-0">
                   {/* Botão Direto para o WhatsApp (PV) sem abrir modal de scripts */}
                   <button
                     onClick={handleDirectWhatsApp}
-                    className="p-1.5 px-2 rounded-xl border border-emerald-500/40 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-bold text-xs transition-all active:scale-95 shadow-xs"
+                    className="p-1 px-2 rounded-xl border border-emerald-500/40 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-bold text-xs transition-all active:scale-95 shadow-xs"
                     title={client.whatsapp || client.telefone ? `Abrir WhatsApp no PV (${client.whatsapp || client.telefone})` : 'Abrir WhatsApp'}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 fill-current" viewBox="0 0 24 24">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
                       <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
                     </svg>
                     <span>Whats</span>
@@ -507,9 +507,9 @@ export default function ClientDrawer({
                 </div>
               </div>
 
-              {/* SELETOR RÁPIDO DE FUNIL DE 1 TOQUE (SEGMENTED CONTROL REFINADO) */}
-              <div className="mt-2.5">
-                <div className="flex items-center justify-between mb-1.5 px-0.5">
+              {/* SELETOR RÁPIDO DE FUNIL DE 1 TOQUE (SEGMENTED CONTROL COMPACTO) */}
+              <div className="mt-1.5">
+                <div className="flex items-center justify-between mb-1 px-0.5">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-base-content/60">
                     Etapa do Funil:
                   </span>
@@ -519,21 +519,24 @@ export default function ClientDrawer({
                     </span>
                   )}
                 </div>
-                <div className="grid grid-cols-4 gap-1 p-1 bg-base-200/90 rounded-2xl border border-base-300 shadow-inner">
+                <div className="grid grid-cols-5 gap-1 p-0.5 bg-base-200/90 rounded-xl border border-base-300 shadow-inner">
                   {[
                     { id: 'prospect', dot: '🔵', text: 'Prospect', activeClass: 'bg-sky-500/15 border-sky-500/60 text-sky-800 dark:text-sky-300 font-bold shadow-xs' },
-                    { id: 'negociacao', dot: '🟡', text: 'Negociação', activeClass: 'bg-amber-500/15 border-amber-500/60 text-amber-800 dark:text-amber-300 font-bold shadow-xs' },
+                    { id: 'negociacao', dot: '🟡', text: 'Negoc.', activeClass: 'bg-amber-500/15 border-amber-500/60 text-amber-800 dark:text-amber-300 font-bold shadow-xs' },
                     { id: 'cliente_ativo', dot: '🟢', text: 'Ativo', activeClass: 'bg-emerald-500/15 border-emerald-500/60 text-emerald-800 dark:text-emerald-300 font-bold shadow-xs' },
-                    { id: 'alerta_resgate', dot: '🔴', text: 'Resgate', activeClass: 'bg-rose-500/15 border-rose-500/60 text-rose-800 dark:text-rose-300 font-bold shadow-xs' }
+                    { id: 'alerta_resgate', dot: '🔴', text: 'Resgate', activeClass: 'bg-rose-500/15 border-rose-500/60 text-rose-800 dark:text-rose-300 font-bold shadow-xs' },
+                    { id: 'em_atraso', dot: '⛔', text: 'Atraso', activeClass: 'bg-rose-500/25 border-rose-500 text-rose-700 dark:text-rose-300 font-bold shadow-xs ring-2 ring-rose-500/30' }
                   ].map((stage) => {
-                    const isCurrent = (client.status_funil || 'prospect') === stage.id;
+                    const isCurrent = stage.id === 'em_atraso'
+                      ? (client.status_funil === 'em_atraso' || client.boleto_atrasado)
+                      : (client.status_funil || 'prospect') === stage.id && !client.boleto_atrasado;
                     return (
                       <button
                         key={stage.id}
                         type="button"
                         onClick={() => handleQuickFunnelChange(stage.id)}
                         disabled={isUpdatingFunnel}
-                        className={`py-1.5 px-1 rounded-xl text-[10px] sm:text-[11px] transition-all border text-center flex items-center justify-center gap-1 overflow-hidden active:scale-95 ${
+                        className={`py-1 px-0.5 rounded-lg text-[10px] sm:text-[11px] transition-all border text-center flex items-center justify-center gap-0.5 overflow-hidden active:scale-95 ${
                           isCurrent
                             ? stage.activeClass
                             : 'border-transparent text-base-content/60 hover:text-base-content hover:bg-base-300/40 font-medium'
@@ -547,8 +550,8 @@ export default function ClientDrawer({
                 </div>
               </div>
 
-              {/* Informações Básicas de Contato */}
-              <div className="flex flex-wrap gap-x-3.5 gap-y-1 mt-2 text-xs text-base-content/75 items-center">
+              {/* Informações Básicas de Contato & Última Compra Discreta */}
+              <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs text-base-content/75 items-center">
                 {client.responsavel && (
                   <span>
                     Dona: <strong className="text-base-content">{client.responsavel}</strong>
@@ -566,6 +569,14 @@ export default function ClientDrawer({
                   </button>
                 )}
                 {client.cidade && <span>Cidade: <strong className="text-base-content">{client.cidade}</strong></span>}
+                
+                {/* 3. Resumo Discreto de Última Compra */}
+                {client.data_ultima_compra && (
+                  <span className="text-base-content/70">
+                    Última compra: <strong className="text-base-content/90 font-medium">{new Date(client.data_ultima_compra + 'T12:00:00').toLocaleDateString('pt-BR')}{client.ultimas_compras?.[0]?.valor ? ` (R$ ${Number(client.ultimas_compras[0].valor).toFixed(2).replace('.', ',')})` : ''}</strong>
+                  </span>
+                )}
+
                 {client.telefone_alternativo && (
                   <span>Tel 2: <strong className="text-base-content">{client.telefone_alternativo}</strong></span>
                 )}
@@ -582,33 +593,33 @@ export default function ClientDrawer({
               </div>
 
               {/* Badges de Categorias & Alertas Financeiros */}
-              <div className="flex gap-1.5 mt-2 flex-wrap items-center">
+              <div className="flex gap-1 mt-1.5 flex-wrap items-center">
                 {rawCategorias.length > 0 ? (
                   rawCategorias.map((cat, idx) => (
-                    <span key={idx} className="badge badge-sm bg-base-200 border-base-300 text-base-content font-medium gap-1">
+                    <span key={idx} className="badge badge-xs bg-base-200 border-base-300 text-base-content font-medium gap-1 py-2">
                       <span>{getCategoryEmoji(cat)}</span> {cat}
                     </span>
                   ))
                 ) : (
-                  <span className="badge badge-sm bg-base-200 border-base-300 text-base-content/70 font-normal gap-1">
+                  <span className="badge badge-xs bg-base-200 border-base-300 text-base-content/70 font-normal gap-1 py-2">
                     <span>✨</span> Salão Geral
                   </span>
                 )}
 
                 {client.boleto_atrasado && (
-                  <span className="badge badge-error badge-sm font-bold shadow-xs text-white">
+                  <span className="badge badge-error badge-xs font-bold shadow-xs text-white py-2">
                     ⚠️ ERP: Boleto em Atraso
                   </span>
                 )}
 
                 {diasSemCompra !== null && diasSemCompra >= 45 && (
-                  <span className="badge badge-warning badge-sm font-bold shadow-xs text-base-content">
+                  <span className="badge badge-warning badge-xs font-bold shadow-xs text-base-content py-2">
                     ⏳ Últ. Compra há {diasSemCompra} dias
                   </span>
                 )}
 
                 {client.melhor_dia_compra && (
-                  <span className="badge badge-sm bg-amber-500/20 border-amber-500/40 text-amber-800 dark:text-amber-300 font-bold">
+                  <span className="badge badge-xs bg-amber-500/20 border-amber-500/40 text-amber-800 dark:text-amber-300 font-bold py-2">
                     💳 Cartão: Dia {client.melhor_dia_compra}
                   </span>
                 )}
@@ -617,7 +628,7 @@ export default function ClientDrawer({
 
             <button
               onClick={handleCloseDrawer}
-              className="w-10 h-10 md:w-11 md:h-11 rounded-full bg-base-200/90 hover:bg-base-300 text-base-content/70 hover:text-base-content flex items-center justify-center text-lg font-bold transition-all active:scale-90 shrink-0 border border-base-300 shadow-xs"
+              className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-base-200/90 hover:bg-base-300 text-base-content/70 hover:text-base-content flex items-center justify-center text-base font-bold transition-all active:scale-90 shrink-0 border border-base-300 shadow-xs"
               title="Fechar card"
               aria-label="Fechar"
             >
@@ -627,9 +638,9 @@ export default function ClientDrawer({
 
           {/* BANNER SE O SALÃO ESTIVER MARCADO COMO NÃO VISITAR / FECHADO */}
           {client.status_funil === 'nao_visitar' && (
-            <div className="bg-rose-500/15 border-2 border-rose-500/60 p-3 rounded-2xl flex items-center justify-between gap-2.5 text-xs text-rose-800 dark:text-rose-300 animate-in fade-in duration-200">
+            <div className="bg-rose-500/15 border-2 border-rose-500/60 p-2.5 rounded-xl flex items-center justify-between gap-2 text-xs text-rose-800 dark:text-rose-300 animate-in fade-in duration-200">
               <div className="flex items-center gap-2">
-                <span className="text-xl shrink-0">🚫</span>
+                <span className="text-lg shrink-0">🚫</span>
                 <div>
                   <strong className="block font-bold">Salão Fechado / Inativo</strong>
                   <span className="text-[11px] text-base-content/70">Este salão está inativo e oculto do mapa e rotas de visitas ativas.</span>
@@ -646,10 +657,10 @@ export default function ClientDrawer({
           )}
 
           {/* BARRA INTERATIVA DE ENDEREÇO & NAVEGAÇÃO GPS 1-TOQUE */}
-          <div className="bg-base-200/80 border border-base-300 p-2.5 rounded-2xl space-y-2 text-xs">
+          <div className="bg-base-200/80 border border-base-300 p-2 rounded-xl space-y-1.5 text-xs">
             <div className="flex items-start justify-between gap-2">
-              <div className="flex items-start gap-2 overflow-hidden flex-1 min-w-0">
-                <span className="text-base shrink-0 mt-0.5">📍</span>
+              <div className="flex items-start gap-1.5 overflow-hidden flex-1 min-w-0">
+                <span className="text-sm shrink-0 mt-0.5">📍</span>
                 <div className="truncate">
                   <span className="font-bold text-base-content block truncate text-xs" title={client.endereco || 'Endereço não cadastrado'}>
                     {client.endereco || 'Endereço não cadastrado'}
@@ -661,12 +672,12 @@ export default function ClientDrawer({
               </div>
 
               {/* Botões de Navegação Direta 1-Toque */}
-              <div className="flex items-center gap-1.5 shrink-0">
+              <div className="flex items-center gap-1 shrink-0">
                 <a
                   href={googleMapsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn btn-xs rounded-xl font-bold bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/40 text-sky-700 dark:text-sky-300 gap-1 transition-all active:scale-95 shadow-2xs"
+                  className="btn btn-xs rounded-lg font-bold bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/40 text-sky-700 dark:text-sky-300 gap-1 transition-all active:scale-95 shadow-2xs py-0.5"
                   title="Abrir rota no Google Maps"
                 >
                   <span>🗺️</span> Maps
@@ -675,7 +686,7 @@ export default function ClientDrawer({
                   href={wazeUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn btn-xs rounded-xl font-bold bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-700 dark:text-cyan-300 gap-1 transition-all active:scale-95 shadow-2xs"
+                  className="btn btn-xs rounded-lg font-bold bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-700 dark:text-cyan-300 gap-1 transition-all active:scale-95 shadow-2xs py-0.5"
                   title="Navegar pelo Waze"
                 >
                   <span>🚙</span> Waze
@@ -684,10 +695,10 @@ export default function ClientDrawer({
             </div>
 
             {/* Ações de ajuste de pino */}
-            <div className="flex items-center justify-end gap-1.5 pt-1.5 border-t border-base-300/60">
+            <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-base-300/60">
               <button
                 onClick={() => onStartRepositionPin && onStartRepositionPin(client)}
-                className="btn btn-xs rounded-xl font-medium bg-base-100 hover:bg-base-300 border border-base-300 text-base-content/80 gap-1 transition-all active:scale-95"
+                className="btn btn-xs rounded-lg font-medium bg-base-100 hover:bg-base-300 border border-base-300 text-base-content/80 gap-1 transition-all active:scale-95 py-0.5"
                 title="Toque no mapa para apontar o novo local deste salão"
               >
                 <span>📌</span> Mover no Mapa
@@ -695,7 +706,7 @@ export default function ClientDrawer({
               <button
                 onClick={handleFixCurrentGPS}
                 disabled={isFixingGps}
-                className="btn btn-xs rounded-xl font-medium bg-base-100 hover:bg-base-300 border border-base-300 text-base-content/80 gap-1 transition-all active:scale-95"
+                className="btn btn-xs rounded-lg font-medium bg-base-100 hover:bg-base-300 border border-base-300 text-base-content/80 gap-1 transition-all active:scale-95 py-0.5"
                 title="Fixar na minha localização GPS atual"
               >
                 <span>📱</span> {isFixingGps ? 'GPS...' : 'Meu GPS'}
@@ -744,7 +755,7 @@ export default function ClientDrawer({
             <div className="bg-amber-500/15 border border-amber-500/40 p-2.5 rounded-2xl flex items-center justify-between text-xs text-amber-800 dark:text-amber-300">
               <div className="flex items-center gap-1.5">
                 <span>⏳</span>
-                <span><strong>Janela de Recompra:</strong> Última compra há {diasSemCompra} dias (Momento ideal de repor lavatório).</span>
+                <span><strong>Janela de Recompra:</strong> Última compra há {diasSemCompra} dias (Momento ideal de reposição).</span>
               </div>
               <span className="badge badge-warning badge-xs font-bold shrink-0">Giro Alto</span>
             </div>

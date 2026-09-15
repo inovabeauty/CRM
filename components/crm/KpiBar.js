@@ -66,6 +66,9 @@ export default function KpiBar({
   // 7. Clientes Ativos
   const ativosCount = clients.filter((c) => c.status_funil === 'cliente_ativo').length;
 
+  // 8. Em Atraso ERP (Cobrança e Regularização)
+  const emAtrasoCount = clients.filter((c) => c.boleto_atrasado === true || c.status_funil === 'em_atraso').length;
+
   return (
     <div className="bg-base-100/95 backdrop-blur-xs border-b border-base-200 px-3 py-1.5 z-10 shrink-0 transition-all">
       <div className="flex items-center justify-between">
@@ -88,7 +91,7 @@ export default function KpiBar({
       </div>
 
       {isExpanded ? (
-        <div className="flex items-center gap-2 mt-1.5 overflow-x-auto no-scrollbar scroll-smooth sm:grid sm:grid-cols-7 animate-in slide-in-from-top-1 duration-150 pb-0.5">
+        <div className="flex items-center gap-2 mt-1.5 overflow-x-auto no-scrollbar scroll-smooth sm:grid sm:grid-cols-8 animate-in slide-in-from-top-1 duration-150 pb-0.5">
           
           {/* Card 1: Retornos Agendados (Hoje / Atrasados) */}
           <div
@@ -219,6 +222,25 @@ export default function KpiBar({
             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-800 dark:text-emerald-300">Ativos</span>
           </div>
 
+          {/* Card 8: Em Atraso ERP (Cobrança & Regularização) */}
+          <div
+            onClick={() => onSelectFunnelFilter(funnelFilter === 'em_atraso' ? '' : 'em_atraso')}
+            className={`cursor-pointer shrink-0 min-w-[120px] sm:min-w-0 p-2 rounded-xl border transition-all flex items-center justify-between ${
+              funnelFilter === 'em_atraso'
+                ? 'bg-rose-500/25 border-rose-500 text-rose-700 dark:text-rose-300 shadow-xs ring-2 ring-rose-500/30'
+                : 'bg-base-200/60 hover:bg-base-200 border-base-300/80'
+            }`}
+            title="Salões com boletos vencidos no ERP aguardando regularização"
+          >
+            <div>
+              <span className="text-[10px] font-semibold text-base-content/65 block leading-tight">
+                ⛔ Em Atraso
+              </span>
+              <span className="text-sm font-extrabold text-rose-600 dark:text-rose-400">{emAtrasoCount}</span>
+            </div>
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-700 dark:text-rose-300">Cobrança</span>
+          </div>
+
         </div>
       ) : (
         /* Linha compacta quando recolhido */
@@ -254,6 +276,14 @@ export default function KpiBar({
           <span className="flex items-center gap-1 font-semibold text-rose-400">
             🔴 {resgateCount} resgate
           </span>
+          {emAtrasoCount > 0 && (
+            <>
+              <span>•</span>
+              <span className="flex items-center gap-1 font-semibold text-rose-500">
+                ⛔ {emAtrasoCount} em atraso
+              </span>
+            </>
+          )}
         </div>
       )}
     </div>
