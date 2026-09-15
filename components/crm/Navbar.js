@@ -83,7 +83,7 @@ export default function Navbar({
   const totalClientsCount = cities.reduce((acc, c) => acc + c.count, 0);
 
   return (
-    <header className="bg-base-100/95 backdrop-blur-md border-b border-base-200 z-[9999] shrink-0 sticky top-0 shadow-xs transition-colors">
+    <header className="bg-base-100/95 backdrop-blur-md border-b border-base-200 z-[9999] shrink-0 sticky top-0 shadow-xs transition-colors pt-safe">
       {/* Linha 1: Marca & Botões de Ação Imediata */}
       <div className="px-3 md:px-4 py-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5 shrink-0">

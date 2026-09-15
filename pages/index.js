@@ -370,10 +370,10 @@ export default function Home() {
     : cities;
 
   return (
-    <div className="flex flex-col h-screen w-full overflow-hidden bg-base-200 text-base-content" data-theme={theme}>
+    <div className="flex flex-col h-screen h-[100dvh] w-full overflow-hidden bg-base-200 text-base-content fixed inset-0" data-theme={theme}>
       <Head>
         <title>CRM Inova Beauty | Rotas & Máquina de Vendas</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover"/>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content={theme === 'dark' ? '#1f2937' : '#f3f4f6'} />
       </Head>
@@ -473,7 +473,10 @@ export default function Home() {
       {selectedClient && !isWhatsAppModalOpen && !isCheckinModalOpen && !isProfitModalOpen && !repositioningClient && (
         <ClientDrawer
           client={selectedClient}
-          onClose={() => setSelectedClient(null)}
+          onClose={() => {
+            setSelectedClient(null);
+            if (typeof window !== 'undefined') window.scrollTo(0, 0);
+          }}
           onUpdateClient={(updated) => setSelectedClient(updated)}
           onAddToRoute={addToRoute}
           isClientInRoute={routeList.some(c => c.id === selectedClient.id)}

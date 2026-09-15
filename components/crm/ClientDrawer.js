@@ -279,6 +279,26 @@ export default function ClientDrawer({
     ? Math.floor((new Date() - new Date(client.data_ultima_compra)) / (1000 * 60 * 60 * 24))
     : null;
 
+  const hasCoordinates = Boolean(client.latitude && client.longitude);
+  const destinationQuery = hasCoordinates
+    ? `${client.latitude},${client.longitude}`
+    : encodeURIComponent(`${client.endereco || client.nome}, ${client.cidade || 'Caxias'}`);
+
+  const googleMapsUrl = hasCoordinates
+    ? `https://www.google.com/maps/dir/?api=1&destination=${client.latitude},${client.longitude}`
+    : `https://www.google.com/maps/dir/?api=1&destination=${destinationQuery}`;
+
+  const wazeUrl = hasCoordinates
+    ? `https://waze.com/ul?ll=${client.latitude},${client.longitude}&navigate=yes`
+    : `https://waze.com/ul?q=${destinationQuery}&navigate=yes`;
+
+  const handleCloseDrawer = () => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }
+    onClose();
+  };
+
   return (
     <div className="absolute bottom-0 left-0 w-full bg-base-100 rounded-t-3xl shadow-[0_-15px_50px_rgba(0,0,0,0.5)] p-4 md:p-6 pb-8 md:pb-6 z-[1000] max-h-[88vh] overflow-y-auto transition-transform duration-300 border-t border-base-300">
       
@@ -596,7 +616,7 @@ export default function ClientDrawer({
             </div>
 
             <button
-              onClick={onClose}
+              onClick={handleCloseDrawer}
               className="w-10 h-10 md:w-11 md:h-11 rounded-full bg-base-200/90 hover:bg-base-300 text-base-content/70 hover:text-base-content flex items-center justify-center text-lg font-bold transition-all active:scale-90 shrink-0 border border-base-300 shadow-xs"
               title="Fechar card"
               aria-label="Fechar"
@@ -625,32 +645,57 @@ export default function ClientDrawer({
             </div>
           )}
 
-          {/* BARRA INTERATIVA DE ENDEREÇO & REPOSICIONAMENTO DE PINO NO MAPA */}
-          <div className="bg-base-200/80 border border-base-300 p-2.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-            <div className="flex items-center gap-2 overflow-hidden">
-              <span className="text-base shrink-0">📍</span>
-              <div className="truncate">
-                <span className="font-bold text-base-content block truncate text-xs" title={client.endereco || 'Endereço não cadastrado'}>
-                  {client.endereco || 'Endereço não cadastrado'}
-                </span>
-                <span className="text-[10px] text-base-content/60 block truncate">
-                  {client.cidade || 'Caxias'} {client.latitude && client.longitude ? `• GPS: ${parseFloat(client.latitude).toFixed(4)}, ${parseFloat(client.longitude).toFixed(4)}` : ''}
-                </span>
+          {/* BARRA INTERATIVA DE ENDEREÇO & NAVEGAÇÃO GPS 1-TOQUE */}
+          <div className="bg-base-200/80 border border-base-300 p-2.5 rounded-2xl space-y-2 text-xs">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-start gap-2 overflow-hidden flex-1 min-w-0">
+                <span className="text-base shrink-0 mt-0.5">📍</span>
+                <div className="truncate">
+                  <span className="font-bold text-base-content block truncate text-xs" title={client.endereco || 'Endereço não cadastrado'}>
+                    {client.endereco || 'Endereço não cadastrado'}
+                  </span>
+                  <span className="text-[10px] text-base-content/60 block truncate">
+                    {client.cidade || 'Caxias'} {hasCoordinates ? `• GPS: ${parseFloat(client.latitude).toFixed(4)}, ${parseFloat(client.longitude).toFixed(4)}` : '• Sem coordenadas GPS'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Botões de Navegação Direta 1-Toque */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <a
+                  href={googleMapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-xs rounded-xl font-bold bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/40 text-sky-700 dark:text-sky-300 gap-1 transition-all active:scale-95 shadow-2xs"
+                  title="Abrir rota no Google Maps"
+                >
+                  <span>🗺️</span> Maps
+                </a>
+                <a
+                  href={wazeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-xs rounded-xl font-bold bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-700 dark:text-cyan-300 gap-1 transition-all active:scale-95 shadow-2xs"
+                  title="Navegar pelo Waze"
+                >
+                  <span>🚙</span> Waze
+                </a>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+            {/* Ações de ajuste de pino */}
+            <div className="flex items-center justify-end gap-1.5 pt-1.5 border-t border-base-300/60">
               <button
                 onClick={() => onStartRepositionPin && onStartRepositionPin(client)}
-                className="btn btn-xs rounded-xl font-bold bg-base-100 hover:bg-base-300 border border-base-300 text-base-content gap-1 shadow-2xs transition-all active:scale-95"
+                className="btn btn-xs rounded-xl font-medium bg-base-100 hover:bg-base-300 border border-base-300 text-base-content/80 gap-1 transition-all active:scale-95"
                 title="Toque no mapa para apontar o novo local deste salão"
               >
-                <span>🗺️</span> Mover no Mapa
+                <span>📌</span> Mover no Mapa
               </button>
               <button
                 onClick={handleFixCurrentGPS}
                 disabled={isFixingGps}
-                className="btn btn-xs rounded-xl font-bold bg-base-100 hover:bg-base-300 border border-base-300 text-base-content/80 gap-1 transition-all active:scale-95"
+                className="btn btn-xs rounded-xl font-medium bg-base-100 hover:bg-base-300 border border-base-300 text-base-content/80 gap-1 transition-all active:scale-95"
                 title="Fixar na minha localização GPS atual"
               >
                 <span>📱</span> {isFixingGps ? 'GPS...' : 'Meu GPS'}

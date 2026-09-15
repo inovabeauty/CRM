@@ -13,7 +13,7 @@ export default function KpiBar({
   funnelFilter,
   onSelectFunnelFilter
 }) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Data de hoje e janela de virada do cartão (próximos 5 dias)
   const today = new Date().getDate();
