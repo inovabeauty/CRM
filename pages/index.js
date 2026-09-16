@@ -114,47 +114,83 @@ export default function Home() {
     return () => window.removeEventListener('online', handleOnline);
   }, []);
 
-  // Busca lista de cidades únicas cadastradas no Supabase (sem limite de 1000)
+// Mapeamento canônico das cidades oficiais da praça comercial da Inova Beauty
+const CITY_CANONICAL_MAP = {
+  'timon': 'Timon',
+  'timom': 'Timon',
+  'caxias': 'Caxias',
+  'bacabal': 'Bacabal',
+  'codo': 'Codó',
+  'barra do corda': 'Barra do Corda',
+  'presidente dutra': 'Presidente Dutra',
+  'pedreiras': 'Pedreiras',
+  'lago da pedra': 'Lago da Pedra',
+  'coelho neto': 'Coelho Neto',
+  'matoes': 'Matões',
+  'parnarama': 'Parnarama',
+  'peritoro': 'Peritoró',
+  'sao joao do soter': 'São João do Soter',
+  'teresina': 'Teresina',
+  'aldeias altas': 'Aldeias Altas',
+  'coroata': 'Coroatá'
+};
+
+function getCanonicalCity(rawCity) {
+  if (!rawCity) return null;
+  const normalized = rawCity.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  return CITY_CANONICAL_MAP[normalized] || null;
+}
+
+  // Busca lista de cidades únicas cadastradas no Supabase (filtrada estritamente pelas cidades oficiais da Inova)
   useEffect(() => {
     async function loadCities() {
       try {
+        let rawList = [];
+
         // Tenta buscar contagem agregada diretamente no PostgreSQL via RPC
         const { data: rpcData, error: rpcError } = await supabase.rpc('obter_contagem_cidades');
         if (!rpcError && rpcData && rpcData.length > 0) {
-          const sortedCities = rpcData.map(c => ({
-            name: c.cidade,
-            count: parseInt(c.count)
-          }));
-          setCities(sortedCities);
-          return;
+          rawList = rpcData.map(c => ({ name: c.cidade, count: parseInt(c.count) }));
+        } else {
+          // Fallback para paginação em lote se a RPC não responder
+          let allClients = [];
+          let from = 0;
+          const step = 1000;
+          while (true) {
+            const { data, error } = await supabase
+              .from('clientes')
+              .select('cidade')
+              .not('cidade', 'is', null)
+              .range(from, from + step - 1);
+
+            if (error || !data || data.length === 0) break;
+            allClients = allClients.concat(data);
+            if (data.length < step) break;
+            from += step;
+          }
+
+          const cityCounts = allClients.reduce((acc, curr) => {
+            const c = curr.cidade?.trim();
+            if (c) acc[c] = (acc[c] || 0) + 1;
+            return acc;
+          }, {});
+
+          rawList = Object.keys(cityCounts).map(name => ({ name, count: cityCounts[name] }));
         }
 
-        // Fallback para paginação em lote se a RPC não responder
-        let allClients = [];
-        let from = 0;
-        const step = 1000;
-        while (true) {
-          const { data, error } = await supabase
-            .from('clientes')
-            .select('cidade')
-            .not('cidade', 'is', null)
-            .range(from, from + step - 1);
-
-          if (error || !data || data.length === 0) break;
-          allClients = allClients.concat(data);
-          if (data.length < step) break;
-          from += step;
+        // Consolida e filtra ESTRITAMENTE pelas cidades oficiais da Inova
+        // Ignora qualquer lixo de ERP, variações de maiúsculas ou clientes de fora da praça
+        const consolidated = {};
+        for (const item of rawList) {
+          const canonical = getCanonicalCity(item.name);
+          if (canonical) {
+            consolidated[canonical] = (consolidated[canonical] || 0) + item.count;
+          }
         }
 
-        const cityCounts = allClients.reduce((acc, curr) => {
-          const c = curr.cidade?.trim();
-          if (c) acc[c] = (acc[c] || 0) + 1;
-          return acc;
-        }, {});
-
-        const sortedCities = Object.keys(cityCounts)
-          .sort((a, b) => a.localeCompare(b))
-          .map(name => ({ name, count: cityCounts[name] }));
+        const sortedCities = Object.keys(consolidated)
+          .sort((a, b) => consolidated[b] - consolidated[a])
+          .map(name => ({ name, count: consolidated[name] }));
 
         setCities(sortedCities);
       } catch (err) {
