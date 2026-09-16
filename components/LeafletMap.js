@@ -106,6 +106,33 @@ function MapClickHandler({ isAddingMode, onMapClick, repositioningClient, onRepo
   return null;
 }
 
+const CITY_CENTROIDS = {
+  'caxias': { lat: -4.8625, lng: -43.3644 },
+  'timon': { lat: -5.0939, lng: -42.8367 },
+  'codo': { lat: -4.4553, lng: -43.8856 },
+  'teresina': { lat: -5.0919, lng: -42.8034 },
+  'sao luis': { lat: -2.5307, lng: -44.3068 },
+  'bacabal': { lat: -4.2403, lng: -44.7806 },
+  'barra do corda': { lat: -5.5056, lng: -45.2444 },
+  'coelho neto': { lat: -4.2564, lng: -43.0131 },
+  'coroata': { lat: -4.1306, lng: -44.1239 },
+  'presidente dutra': { lat: -5.2917, lng: -44.4917 },
+  'pedreiras': { lat: -4.5681, lng: -44.5969 },
+  'peritoro': { lat: -4.3806, lng: -44.3333 },
+  'sao mateus': { lat: -4.0389, lng: -44.4722 },
+  'matinha': { lat: -3.1000, lng: -45.0333 },
+  'aldeias altas': { lat: -4.6289, lng: -43.4764 },
+  'lago da pedra': { lat: -4.3333, lng: -45.1667 },
+  'matoes': { lat: -5.5192, lng: -43.2033 },
+  'parnarama': { lat: -5.6811, lng: -43.0908 },
+  'sao joao do soter': { lat: -5.0747, lng: -43.8114 },
+  'maraba': { lat: -5.3686, lng: -49.1178 },
+  'parauapebas': { lat: -6.0678, lng: -49.9075 }
+};
+
+const normalizeCity = (str) =>
+  str ? str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim() : '';
+
 // Manipulação de câmera e foco
 function MapController({ searchTarget, userLoc, radiusMode, clients, cityFilter, repositioningClient, flyToCoords }) {
   const map = useMap();
@@ -141,23 +168,57 @@ function MapController({ searchTarget, userLoc, radiusMode, clients, cityFilter,
     }
   }, [radiusMode, userLoc, map]);
 
-  // Ajusta o enquadramento (bounds) APENAS quando a cidade selecionada mudar
+  // Ajusta o enquadramento (bounds) em perfeita sincronia com a cidade selecionada
   useEffect(() => {
+    // 1. Caso selecione "Todas as Cidades" (cityFilter vazio)
     if (!cityFilter) {
-      lastFittedCityRef.current = null;
+      if (lastFittedCityRef.current !== null) {
+        lastFittedCityRef.current = null;
+        if (clients && clients.length > 0) {
+          const allCoords = clients
+            .filter(c => c.latitude && c.longitude)
+            .map(c => [parseFloat(c.latitude), parseFloat(c.longitude)]);
+          if (allCoords.length > 0) {
+            map.fitBounds(L.latLngBounds(allCoords), { padding: [30, 30], maxZoom: 13 });
+          }
+        }
+      }
       return;
     }
 
-    if (cityFilter !== lastFittedCityRef.current && clients && clients.length > 0) {
-      const coords = clients
-        .filter(c => c.latitude && c.longitude)
-        .map(c => [parseFloat(c.latitude), parseFloat(c.longitude)]);
-      
-      if (coords.length > 0) {
-        lastFittedCityRef.current = cityFilter;
-        const bounds = L.latLngBounds(coords);
-        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+    // 2. Se já enquadrou esta mesma cidade, não repete (permite ao usuário dar zoom livre sem briga)
+    if (cityFilter === lastFittedCityRef.current) {
+      return;
+    }
+
+    const targetNorm = normalizeCity(cityFilter);
+    const centroid = CITY_CENTROIDS[targetNorm];
+
+    // 3. FILTRO CRÍTICO: Buscar APENAS os salões que pertencem à cidade selecionada
+    // Evita o erro de usar os salões da cidade anterior enquanto o carregamento da nova cidade ainda acontece
+    const cityClients = (clients || []).filter(c => normalizeCity(c.cidade) === targetNorm);
+
+    // Se os salões da nova cidade ainda não chegaram da rede:
+    // Move a câmera imediatamente para o centro da cidade e NÃO marca como finalizado ainda
+    if (cityClients.length === 0) {
+      if (centroid) {
+        map.flyTo([centroid.lat, centroid.lng], 13, { duration: 1.0 });
       }
+      return;
+    }
+
+    // Quando os salões da cidade selecionada chegarem:
+    const coords = cityClients
+      .filter(c => c.latitude && c.longitude)
+      .map(c => [parseFloat(c.latitude), parseFloat(c.longitude)]);
+
+    if (coords.length > 0) {
+      lastFittedCityRef.current = cityFilter;
+      const bounds = L.latLngBounds(coords);
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+    } else if (centroid) {
+      lastFittedCityRef.current = cityFilter;
+      map.flyTo([centroid.lat, centroid.lng], 14, { duration: 1.0 });
     }
   }, [cityFilter, clients, map]);
 
@@ -227,7 +288,7 @@ export default function LeafletMap({
             .range(from, from + step - 1);
 
           if (cityFilter) {
-            query = query.eq('cidade', cityFilter);
+            query = query.ilike('cidade', cityFilter.trim());
           } else if (allowedCities && allowedCities.length > 0) {
             query = query.in('cidade', allowedCities);
           }
@@ -252,12 +313,12 @@ export default function LeafletMap({
           from += step;
         }
 
-        if (!queryError && allData.length > 0) {
+        if (!queryError) {
           setClients(allData);
-          cacheClientsLocally(allData);
+          if (allData.length > 0) cacheClientsLocally(allData);
           if (onClientsLoaded) onClientsLoaded(allData);
         } else {
-          // Fallback offline se houver falha de rede
+          // Fallback offline se houver falha de rede real
           const cached = getCachedClientsLocally();
           if (cached) {
             let filtered = cached;
