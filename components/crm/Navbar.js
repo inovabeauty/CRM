@@ -15,7 +15,8 @@ export default function Navbar({
   onSelectFunnelFilter,
   theme = 'dark',
   onToggleTheme,
-  onSelectClient
+  onSelectClient,
+  onOpenCreateClient
 }) {
   const { user, profile, isGestor, signOut } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
@@ -113,6 +114,15 @@ export default function Navbar({
 
         {/* Ações Rápidas (Rota sempre visível + Menu Executivo limpo) */}
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* Botão Novo Salão (Acesso Direto para Cadastro com Coordenadas ou GPS) */}
+          <button
+            onClick={onOpenCreateClient}
+            className="btn btn-xs sm:btn-sm btn-success font-bold text-[11px] gap-1 shadow-xs rounded-xl text-white"
+            title="Cadastrar Novo Salão com Coordenadas ou Endereço"
+          >
+            <span>➕</span> <span className="hidden xs:inline">Novo</span> Salão
+          </button>
+
           {/* Botão Rota do Dia (Sempre visível tanto no mobile quanto no desktop) */}
           <button
             onClick={onOpenRouteModal}
@@ -186,6 +196,12 @@ export default function Navbar({
                 </li>
                 <div className="divider my-1"></div>
                 
+                <li>
+                  <button onClick={onOpenCreateClient} className="flex items-center gap-2 font-bold text-success">
+                    <span>➕</span> Cadastrar Novo Salão
+                  </button>
+                </li>
+
                 {/* Itens móveis integrados */}
                 <li className="md:hidden">
                   <button onClick={onOpenDailyReport} className="flex items-center gap-2">

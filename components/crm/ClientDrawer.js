@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import ClientTimeline from './ClientTimeline';
 import { getCategoryEmoji } from '../../lib/categoryUtils';
+import { parseCoordinatesInput, getGoogleMapsUrl, formatCoordinates } from '../../lib/geoUtils';
 
 export default function ClientDrawer({
   client,
@@ -16,6 +17,7 @@ export default function ClientDrawer({
 }) {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState({});
+  const [editSmartCoordsInput, setEditSmartCoordsInput] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdatingFunnel, setIsUpdatingFunnel] = useState(false);
   const [funnelFeedback, setFunnelFeedback] = useState(null);
@@ -144,9 +146,49 @@ export default function ClientDrawer({
       ...client,
       endereco: client.endereco || '',
       cidade: client.cidade || 'Caxias',
+      latitude: client.latitude != null ? client.latitude.toString() : '',
+      longitude: client.longitude != null ? client.longitude.toString() : '',
+      localizacao_pendente: client.localizacao_pendente ?? false,
       categoriasList: rawCats
     });
+    setEditSmartCoordsInput(
+      client.latitude && client.longitude
+        ? formatCoordinates(client.latitude, client.longitude)
+        : ''
+    );
     setIsEditingProfile(true);
+  };
+
+  const handleApplyEditSmartCoords = (textToParse) => {
+    const target = textToParse !== undefined ? textToParse : editSmartCoordsInput;
+    if (!target || !target.trim()) {
+      setGeocodeResult({
+        success: false,
+        message: 'Cole coordenadas ou o link do Google Maps para extrair.'
+      });
+      return;
+    }
+
+    const parsed = parseCoordinatesInput(target);
+    if (parsed.success) {
+      setProfileForm((prev) => ({
+        ...prev,
+        latitude: parsed.lat.toString(),
+        longitude: parsed.lng.toString(),
+        localizacao_pendente: false
+      }));
+      setGeocodeResult({
+        success: true,
+        message: `📍 Posição extraída com sucesso (${parsed.lat}, ${parsed.lng})!${
+          parsed.wasInverted ? ' ⚡ Inversão Lat/Long corrigida automaticamente.' : ''
+        }`
+      });
+    } else {
+      setGeocodeResult({
+        success: false,
+        message: parsed.error || 'Formato não reconhecido.'
+      });
+    }
   };
 
   // Busca automática de latitude/longitude pelo endereço digitado via OpenStreetMap
@@ -203,6 +245,10 @@ export default function ClientDrawer({
       categoriasParaOFront = items;
     }
 
+    const latNum = profileForm.latitude ? parseFloat(profileForm.latitude) : null;
+    const lngNum = profileForm.longitude ? parseFloat(profileForm.longitude) : null;
+    const pendente = profileForm.localizacao_pendente ?? (latNum && lngNum ? false : true);
+
     const { error } = await supabase
       .from('clientes')
       .update({
@@ -214,9 +260,9 @@ export default function ClientDrawer({
         categorias: categoriasPg,
         endereco: profileForm.endereco,
         cidade: profileForm.cidade,
-        latitude: profileForm.latitude,
-        longitude: profileForm.longitude,
-        localizacao_pendente: false
+        latitude: latNum,
+        longitude: lngNum,
+        localizacao_pendente: pendente
       })
       .eq('id', profileForm.id);
 
@@ -224,8 +270,10 @@ export default function ClientDrawer({
       window.dispatchEvent(new Event('refreshMap'));
       const updated = {
         ...profileForm,
+        latitude: latNum,
+        longitude: lngNum,
         categorias: categoriasParaOFront,
-        localizacao_pendente: false
+        localizacao_pendente: pendente
       };
       onUpdateClient(updated);
       setIsEditingProfile(false);
@@ -371,48 +419,166 @@ export default function ClientDrawer({
             </div>
           </div>
 
-          {/* Endereço e Geolocalização */}
-          <div className="bg-base-200/60 p-3 rounded-2xl border border-base-300 space-y-2">
+          {/* Endereço e Geolocalização Avançada */}
+          <div className="bg-base-200/80 p-3.5 rounded-2xl border border-base-300 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-base-content/80 flex items-center gap-1.5">
+                <span>🎯</span> Endereço & Localização Exata
+              </span>
+              {profileForm.latitude && profileForm.longitude ? (
+                <span className="badge badge-success badge-xs font-bold text-white gap-1 py-2">
+                  ✓ Ponto Definido
+                </span>
+              ) : (
+                <span className="badge badge-warning badge-xs font-medium gap-1 py-2">
+                  ⚠️ Sem Coordenadas
+                </span>
+              )}
+            </div>
+
             <div className="grid grid-cols-3 gap-2">
               <div className="form-control col-span-2">
-                <label className="label py-1"><span className="label-text font-bold text-xs">Endereço (Rua, Número, Bairro)</span></label>
+                <label className="label py-0.5"><span className="label-text font-bold text-xs">Endereço (Rua, Número, Bairro)</span></label>
                 <input
                   type="text"
                   placeholder="Ex: Rua São Pedro, 120, Centro"
-                  className="input input-sm input-bordered w-full"
+                  className="input input-sm input-bordered w-full text-xs"
                   value={profileForm.endereco || ''}
                   onChange={(e) => setProfileForm({ ...profileForm, endereco: e.target.value })}
                 />
               </div>
               <div className="form-control">
-                <label className="label py-1"><span className="label-text font-bold text-xs">Cidade</span></label>
+                <label className="label py-0.5"><span className="label-text font-bold text-xs">Cidade</span></label>
                 <input
                   type="text"
                   placeholder="Ex: Caxias"
-                  className="input input-sm input-bordered w-full"
+                  className="input input-sm input-bordered w-full text-xs"
                   value={profileForm.cidade || ''}
                   onChange={(e) => setProfileForm({ ...profileForm, cidade: e.target.value })}
                 />
               </div>
             </div>
 
-            <div className="flex flex-col gap-1.5 pt-1">
+            {/* Campo Inteligente: Colar Coordenadas ou Link do Google Maps */}
+            <div className="form-control">
+              <label className="label py-0.5">
+                <span className="label-text font-bold text-[11px] text-primary">Colar Coordenadas ou Link do Google Maps</span>
+              </label>
+              <div className="join w-full">
+                <input
+                  type="text"
+                  placeholder="Cole coordenadas (-4.862415, -43.356210) ou link do Maps"
+                  className="input input-sm input-bordered join-item w-full text-xs font-mono"
+                  value={editSmartCoordsInput}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setEditSmartCoordsInput(val);
+                    if (val.includes('maps') || val.includes(',') || val.includes(';') || val.includes('@')) {
+                      handleApplyEditSmartCoords(val);
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => handleApplyEditSmartCoords()}
+                  className="btn btn-sm btn-primary join-item text-xs font-bold shrink-0"
+                  title="Extrair coordenadas do texto ou link"
+                >
+                  Extrair
+                </button>
+              </div>
+            </div>
+
+            {/* Feedback do Geocoding / Parser */}
+            {geocodeResult && (
+              <div className={`p-2 rounded-xl text-xs flex items-center gap-1.5 animate-in fade-in duration-150 ${geocodeResult.success ? 'bg-success/15 border border-success/30 text-success' : 'bg-warning/15 border border-warning/30 text-warning'}`}>
+                <span>{geocodeResult.success ? '✓' : '⚠️'}</span>
+                <span className="text-[11px] leading-tight">{geocodeResult.message}</span>
+              </div>
+            )}
+
+            {/* Inputs de Latitude e Longitude para ajuste fino */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <div className="form-control">
+                <label className="label py-0.5">
+                  <span className="label-text font-bold text-[11px]">Latitude</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: -4.862415"
+                  className="input input-xs input-bordered w-full font-mono text-[11px]"
+                  value={profileForm.latitude || ''}
+                  onChange={(e) => setProfileForm({ ...profileForm, latitude: e.target.value })}
+                />
+              </div>
+              <div className="form-control">
+                <label className="label py-0.5">
+                  <span className="label-text font-bold text-[11px]">Longitude</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: -43.356210"
+                  className="input input-xs input-bordered w-full font-mono text-[11px]"
+                  value={profileForm.longitude || ''}
+                  onChange={(e) => setProfileForm({ ...profileForm, longitude: e.target.value })}
+                />
+              </div>
+            </div>
+
+            {/* Ações de Suporte: Buscar por Endereço e Preview no Maps */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-base-300/60">
               <button
                 type="button"
                 onClick={handleSearchCoordinates}
                 disabled={isGeocoding}
-                className="btn btn-xs btn-outline btn-primary rounded-xl font-bold gap-1.5"
+                className="btn btn-xs btn-outline btn-primary rounded-xl font-bold gap-1"
                 title="Localizar automaticamente as coordenadas pelo endereço"
               >
-                <span>🔍</span> {isGeocoding ? 'Buscando Coordenadas...' : 'Buscar Coordenadas pelo Endereço'}
+                <span>🔍</span> {isGeocoding ? 'Buscando...' : 'Buscar pelo Endereço'}
               </button>
 
-              {geocodeResult && (
-                <div className={`p-2 rounded-xl text-xs flex items-center gap-1.5 animate-in fade-in duration-150 ${geocodeResult.success ? 'bg-success/15 border border-success/30 text-success' : 'bg-warning/15 border border-warning/30 text-warning'}`}>
-                  <span>{geocodeResult.success ? '✓' : '⚠️'}</span>
-                  <span className="text-[11px] leading-tight">{geocodeResult.message}</span>
-                </div>
+              {profileForm.latitude && profileForm.longitude && (
+                <a
+                  href={getGoogleMapsUrl(profileForm.latitude, profileForm.longitude)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-xs btn-outline btn-info gap-1 rounded-xl font-bold shrink-0 shadow-2xs"
+                  title="Abre nova aba com o ponto exato no Google Maps para confirmação visual"
+                >
+                  <span>👁️</span> Testar no Google Maps
+                </a>
               )}
+            </div>
+
+            {/* Seletor de Status da Localização (Exata vs Pendente) */}
+            <div className="pt-2 border-t border-base-300/60">
+              <span className="text-[11px] font-bold block mb-1 text-base-content/70">
+                Status da Posição:
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setProfileForm({ ...profileForm, localizacao_pendente: false })}
+                  className={`py-1.5 px-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
+                    !profileForm.localizacao_pendente
+                      ? 'bg-success/20 border-success text-success shadow-xs'
+                      : 'bg-base-100 border-base-300 text-base-content/60 hover:bg-base-200'
+                  }`}
+                >
+                  <span>🟢</span> Exata (Confirmada)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProfileForm({ ...profileForm, localizacao_pendente: true })}
+                  className={`py-1.5 px-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
+                    profileForm.localizacao_pendente
+                      ? 'bg-amber-500/20 border-amber-500 text-amber-700 dark:text-amber-400 shadow-xs'
+                      : 'bg-base-100 border-base-300 text-base-content/60 hover:bg-base-200'
+                  }`}
+                >
+                  <span>🟡</span> Pendente em Campo
+                </button>
+              </div>
             </div>
           </div>
 
@@ -665,8 +831,24 @@ export default function ClientDrawer({
                   <span className="font-bold text-base-content block truncate text-xs" title={client.endereco || 'Endereço não cadastrado'}>
                     {client.endereco || 'Endereço não cadastrado'}
                   </span>
-                  <span className="text-[10px] text-base-content/60 block truncate">
-                    {client.cidade || 'Caxias'} {hasCoordinates ? `• GPS: ${parseFloat(client.latitude).toFixed(4)}, ${parseFloat(client.longitude).toFixed(4)}` : '• Sem coordenadas GPS'}
+                  <span className="text-[10px] text-base-content/60 flex items-center gap-1.5 flex-wrap">
+                    <span>{client.cidade || 'Caxias'}</span>
+                    {hasCoordinates ? (
+                      <span className="font-mono">
+                        • GPS: {parseFloat(client.latitude).toFixed(4)}, {parseFloat(client.longitude).toFixed(4)}
+                      </span>
+                    ) : (
+                      <span>• Sem coordenadas GPS</span>
+                    )}
+                    {client.localizacao_pendente ? (
+                      <span className="badge badge-warning badge-xs font-bold text-[9px] py-0 px-1.5 shadow-2xs">
+                        ⚠️ Validação Pendente
+                      </span>
+                    ) : hasCoordinates ? (
+                      <span className="badge badge-success badge-xs font-bold text-white text-[9px] py-0 px-1.5 shadow-2xs">
+                        ✓ Posição Exata
+                      </span>
+                    ) : null}
                   </span>
                 </div>
               </div>

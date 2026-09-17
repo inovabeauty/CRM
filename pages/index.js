@@ -475,6 +475,13 @@ function getCanonicalCity(rawCity) {
           setSearchTarget(client);
           setSelectedClient(client);
         }}
+        onOpenCreateClient={() => {
+          setCreateInitialData({
+            cidade: selectedCity || 'Caxias'
+          });
+          setIsCreateModalOpen(true);
+          setSelectedClient(null);
+        }}
       />
 
       {/* 2. Mini KPI Bar Retrátil (Radar Comercial) */}
