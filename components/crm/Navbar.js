@@ -39,7 +39,10 @@ export default function Navbar({
       });
       const data = await res.json();
       if (data.success) {
-        alert(`✅ Sincronização com ERP Concluída!\n\n• ${data.totalErp} clientes do ERP processados\n• ${data.vinculadosExistentes} vinculados a salões existentes\n• ${data.criadosNovos} novos salões adicionados com compras\n• ${data.inadimplentesAtivos} alertas de inadimplência ativos\n• ${data.totalVendasConsolidadas} vendas consolidadas (R$ ${data.valorTotalFaturado?.toFixed(2)})`);
+        const pendenciaMsg = data.clientesComPendencias > 0
+          ? `\n• ${data.clientesComPendencias} salões com pendências financeiras (${data.boletosAbertosCount} boletos - R$ ${Number(data.totalValorAberto || 0).toFixed(2).replace('.', ',')})`
+          : '';
+        alert(`✅ Sincronização com ERP Concluída!\n\n• ${data.totalErp} clientes do ERP processados\n• ${data.vinculadosExistentes} vinculados a salões existentes\n• ${data.criadosNovos} novos salões adicionados com compras\n• ${data.inadimplentesAtivos} alertas de inadimplência ativos (boletos vencidos)${pendenciaMsg}\n• ${data.totalVendasConsolidadas} vendas consolidadas (R$ ${Number(data.valorTotalFaturado || 0).toFixed(2).replace('.', ',')})`);
         window.dispatchEvent(new Event('refreshMap'));
       } else {
         alert('Erro ao sincronizar com ERP: ' + (data.error || 'Erro desconhecido'));

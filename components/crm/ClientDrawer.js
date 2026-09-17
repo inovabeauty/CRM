@@ -1097,15 +1097,53 @@ export default function ClientDrawer({
             </div>
           )}
 
-          {/* BANNER DE BLINDAGEM FINANCEIRA ERP (SE HOUVER BOLETO EM ATRASO) */}
-          {client.boleto_atrasado && (
-            <div className="bg-error/15 border-2 border-error/50 p-3 rounded-2xl flex items-start gap-2.5 text-xs text-error animate-pulse">
-              <span className="text-lg">⛔</span>
-              <div>
-                <strong className="block font-bold">BLOQUEIO FINANCEIRO (ERP): Boleto em Atraso</strong>
-                <span className="text-[11px] text-base-content/70">
-                  Este salão possui pendência de pagamento no ERP. Vendas autorizadas estritamente à vista ou via cartão de crédito.
-                </span>
+          {/* BANNER DE BLINDAGEM FINANCEIRA ERP */}
+          {client.boleto_atrasado ? (
+            <div className="bg-error/15 border-2 border-error/60 p-3.5 rounded-2xl flex items-start gap-3 text-xs text-error shadow-xs">
+              <span className="text-xl shrink-0">⛔</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <strong className="font-bold text-sm text-error">BLOQUEIO FINANCEIRO (ERP)</strong>
+                  {Number(client.valor_inadimplente || 0) > 0 && (
+                    <span className="badge badge-error badge-sm font-extrabold text-white">
+                      R$ {Number(client.valor_inadimplente).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} em atraso
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-base-content/80 mt-1 leading-snug">
+                  Este salão possui parcelas vencidas no ERP. Vendas autorizadas estritamente à vista ou via cartão de crédito.
+                </p>
+                {Array.isArray(client.boletos_pendentes) && client.boletos_pendentes.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-error/20 flex flex-wrap gap-1.5">
+                    {client.boletos_pendentes.map((b, idx) => (
+                      <span
+                        key={idx}
+                        className={`text-[10px] px-2 py-0.5 rounded-md font-semibold ${
+                          b.vencido
+                            ? 'bg-error text-white font-bold'
+                            : 'bg-base-200 text-base-content/80 border border-base-300'
+                        }`}
+                      >
+                        {b.parcela ? `Parc. ${b.parcela}` : 'Boleto'}: R$ {Number(b.saldo || b.valor || 0).toFixed(2)} ({b.data_vencimento ? new Date(b.data_vencimento + 'T12:00:00').toLocaleDateString('pt-BR') : 'Sem data'}) {b.vencido ? '• VENCIDO' : '• A vencer'}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (Array.isArray(client.boletos_pendentes) && client.boletos_pendentes.length > 0) && (
+            <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-2xl flex items-start gap-2.5 text-xs text-amber-800 dark:text-amber-300">
+              <span className="text-base shrink-0">📋</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <strong className="font-bold">Contas a Receber no ERP</strong>
+                  <span className="badge badge-warning badge-xs font-bold">
+                    {client.boletos_pendentes.length} {client.boletos_pendentes.length === 1 ? 'título' : 'títulos'} a vencer
+                  </span>
+                </div>
+                <p className="text-[11px] text-base-content/70 mt-0.5">
+                  Salão em dia, com parcelas programadas no ERP.
+                </p>
               </div>
             </div>
           )}
@@ -1145,17 +1183,20 @@ export default function ClientDrawer({
             >
               <span>📜</span> Histórico
             </button>
-            {client.ultimas_compras && client.ultimas_compras.length > 0 ? (
+            {((client.ultimas_compras && client.ultimas_compras.length > 0) || (client.boletos_pendentes && client.boletos_pendentes.length > 0)) ? (
               <button
                 type="button"
                 onClick={() => setActiveTab('erp')}
-                className={`py-2 px-1 rounded-xl text-xs font-bold transition-all text-center flex items-center justify-center gap-1 ${
+                className={`py-2 px-1 rounded-xl text-xs font-bold transition-all text-center flex items-center justify-center gap-1 relative ${
                   activeTab === 'erp'
                     ? 'bg-base-100 text-base-content shadow-xs border border-base-300/80'
                     : 'text-base-content/60 hover:text-base-content hover:bg-base-300/30'
                 }`}
               >
-                <span>📦</span> ERP ({client.qtd_compras || client.ultimas_compras.length})
+                <span>📦</span> ERP ({client.qtd_compras || client.ultimas_compras?.length || (client.boletos_pendentes?.length ? 'Fin' : 0)})
+                {client.boleto_atrasado && (
+                  <span className="w-2 h-2 rounded-full bg-error absolute top-1.5 right-1.5" />
+                )}
               </button>
             ) : (
               <div className="py-2 px-1 rounded-xl text-xs text-base-content/30 text-center flex items-center justify-center gap-1 font-medium">
@@ -1311,20 +1352,77 @@ export default function ClientDrawer({
           )}
 
           {/* Conteúdo da Aba: ERP */}
-          {activeTab === 'erp' && client.ultimas_compras && (
-            <div className="bg-base-200/80 p-3.5 rounded-2xl border border-base-300 space-y-2.5 animate-in fade-in duration-150">
-              <span className="font-bold text-base-content/70 block text-xs">Histórico de Compras Faturadas:</span>
-              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                {client.ultimas_compras.map((compra, idx) => (
-                  <div key={idx} className="border-l-2 border-emerald-500 pl-3 py-1.5 bg-base-100 p-2.5 rounded-xl border border-base-300/60">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="font-bold text-base-content">{new Date(compra.data).toLocaleDateString('pt-BR')}</span>
-                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">R$ {compra.valor?.toFixed(2)}</span>
-                    </div>
-                    <p className="text-[11px] text-base-content/70 mt-0.5">{compra.itens}</p>
+          {activeTab === 'erp' && (
+            <div className="space-y-3 animate-in fade-in duration-150">
+              {/* Seção: Boletos e Contas a Receber */}
+              {Array.isArray(client.boletos_pendentes) && client.boletos_pendentes.length > 0 && (
+                <div className="bg-base-200/80 p-3.5 rounded-2xl border border-base-300 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-base-content/80 text-xs flex items-center gap-1.5">
+                      <span>💳</span> Títulos / Boletos no ERP
+                    </span>
+                    {Number(client.valor_inadimplente || 0) > 0 && (
+                      <span className="text-[11px] font-bold text-error">
+                        R$ {Number(client.valor_inadimplente).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} em atraso
+                      </span>
+                    )}
                   </div>
-                ))}
-              </div>
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    {client.boletos_pendentes.map((b, idx) => (
+                      <div
+                        key={idx}
+                        className={`p-2 rounded-xl border flex items-center justify-between text-xs ${
+                          b.vencido
+                            ? 'bg-error/10 border-error/40 text-error'
+                            : 'bg-base-100 border-base-300/80 text-base-content'
+                        }`}
+                      >
+                        <div>
+                          <div className="font-bold flex items-center gap-1.5">
+                            <span>{b.parcela ? `Parcela ${b.parcela}` : `Boleto #${b.id?.slice(0, 6)}`}</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-extrabold uppercase ${
+                              b.vencido ? 'bg-error text-white' : 'bg-info/20 text-info'
+                            }`}>
+                              {b.vencido ? 'Vencido' : 'A Vencer'}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-base-content/60">
+                            Vencimento: {b.data_vencimento ? new Date(b.data_vencimento + 'T12:00:00').toLocaleDateString('pt-BR') : 'N/D'}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-extrabold text-xs">
+                            R$ {Number(b.saldo || b.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </div>
+                          {b.saldo < b.valor && (
+                            <div className="text-[10px] text-emerald-600 dark:text-emerald-400">
+                              (Parcialmente pago)
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Seção: Histórico de Compras Faturadas */}
+              {client.ultimas_compras && client.ultimas_compras.length > 0 && (
+                <div className="bg-base-200/80 p-3.5 rounded-2xl border border-base-300 space-y-2.5">
+                  <span className="font-bold text-base-content/70 block text-xs">Histórico de Compras Faturadas:</span>
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {client.ultimas_compras.map((compra, idx) => (
+                      <div key={idx} className="border-l-2 border-emerald-500 pl-3 py-1.5 bg-base-100 p-2.5 rounded-xl border border-base-300/60">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-bold text-base-content">{new Date(compra.data).toLocaleDateString('pt-BR')}</span>
+                          <span className="text-emerald-600 dark:text-emerald-400 font-bold">R$ {compra.valor?.toFixed(2)}</span>
+                        </div>
+                        <p className="text-[11px] text-base-content/70 mt-0.5">{compra.itens}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
