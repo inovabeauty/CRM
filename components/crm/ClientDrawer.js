@@ -26,6 +26,12 @@ export default function ClientDrawer({
   const [geocodeResult, setGeocodeResult] = useState(null);
   const [activeTab, setActiveTab] = useState('dados'); // 'dados' | 'timeline' | 'erp'
 
+  // Estados da caixa rápida "Por Coordenada"
+  const [isCoordBoxOpen, setIsCoordBoxOpen] = useState(false);
+  const [coordInputText, setCoordInputText] = useState('');
+  const [isSavingCoords, setIsSavingCoords] = useState(false);
+  const [coordError, setCoordError] = useState('');
+
   if (!client) return null;
 
   // Handler para fixar localização com o GPS atual do consultor
@@ -66,6 +72,48 @@ export default function ClientDrawer({
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
+  };
+
+  // Handler para salvar coordenadas digitadas manualmente ou extraídas de link do Google Maps
+  const handleSaveManualCoordinates = async () => {
+    const parsed = parseCoordinatesInput(coordInputText);
+    if (!parsed.success) {
+      setCoordError(parsed.error || 'Coordenadas inválidas. Cole um link do Maps ou digite Ex: -4.8623, -43.3512');
+      return;
+    }
+
+    setIsSavingCoords(true);
+    setCoordError('');
+    try {
+      const { error } = await supabase
+        .from('clientes')
+        .update({
+          latitude: parsed.lat,
+          longitude: parsed.lng,
+          localizacao_pendente: false
+        })
+        .eq('id', client.id);
+
+      if (error) throw error;
+
+      const updated = {
+        ...client,
+        latitude: parsed.lat,
+        longitude: parsed.lng,
+        localizacao_pendente: false
+      };
+
+      if (onUpdateClient) onUpdateClient(updated);
+      setIsCoordBoxOpen(false);
+      setCoordInputText('');
+      window.dispatchEvent(new Event('refreshMap'));
+      alert(`✅ Coordenadas salvas com sucesso!\n\nSalão: ${client.nome}\nLatitude: ${parsed.lat.toFixed(6)}\nLongitude: ${parsed.lng.toFixed(6)}\n\nA posição foi atualizada no mapa e o status agora é Posição Exata.`);
+    } catch (err) {
+      console.error('Erro ao salvar coordenadas manuais:', err);
+      setCoordError('Falha ao salvar no banco de dados: ' + err.message);
+    } finally {
+      setIsSavingCoords(false);
+    }
   };
 
   // Handler para troca rápida de funil com 1 toque
@@ -881,7 +929,7 @@ export default function ClientDrawer({
             </div>
 
             {/* Ações de ajuste de pino */}
-            <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-base-300/60">
+            <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-base-300/60 flex-wrap">
               <button
                 onClick={() => onStartRepositionPin && onStartRepositionPin(client)}
                 className="btn btn-xs rounded-lg font-medium bg-base-100 hover:bg-base-300 border border-base-300 text-base-content/80 gap-1 transition-all active:scale-95 py-0.5"
@@ -897,7 +945,124 @@ export default function ClientDrawer({
               >
                 <span>📱</span> {isFixingGps ? 'GPS...' : 'Meu GPS'}
               </button>
+              <button
+                onClick={() => setIsCoordBoxOpen(!isCoordBoxOpen)}
+                className={`btn btn-xs rounded-lg font-bold gap-1 transition-all active:scale-95 py-0.5 border ${
+                  isCoordBoxOpen
+                    ? 'bg-primary text-primary-content border-primary shadow-xs'
+                    : 'bg-base-100 hover:bg-base-200 border-base-300 text-primary'
+                }`}
+                title="Digitar coordenadas ou colar link do Google Maps"
+              >
+                <span>🌐</span> Por Coordenada
+              </button>
             </div>
+
+            {/* Caixa Rápida para Digitar Coordenada ou Colar Link do Google Maps */}
+            {isCoordBoxOpen && (() => {
+              const parsedQuickCoords = parseCoordinatesInput(coordInputText);
+              return (
+                <div className="mt-2.5 p-3 bg-base-200/95 border border-primary/40 rounded-2xl shadow-md space-y-2.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-base-content flex items-center gap-1.5">
+                      <span>🌐</span> Definir Posição por Coordenada ou Link
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCoordBoxOpen(false);
+                        setCoordInputText('');
+                        setCoordError('');
+                      }}
+                      className="text-xs opacity-60 hover:opacity-100 font-bold p-1"
+                      title="Fechar"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Cole link do Google Maps ou: -4.8623, -43.3512"
+                        value={coordInputText}
+                        onChange={(e) => {
+                          setCoordInputText(e.target.value);
+                          setCoordError('');
+                        }}
+                        className="input input-xs sm:input-sm input-bordered w-full text-xs font-mono rounded-xl bg-base-100 pr-16"
+                        autoFocus
+                      />
+                      {coordInputText && (
+                        <button
+                          type="button"
+                          onClick={() => setCoordInputText('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] opacity-60 hover:opacity-100"
+                        >
+                          Limpar
+                        </button>
+                      )}
+                    </div>
+
+                    {coordError && (
+                      <div className="text-[11px] text-error font-medium flex items-center gap-1 bg-error/10 p-1.5 rounded-lg">
+                        <span>⚠️</span> {coordError}
+                      </div>
+                    )}
+
+                    {coordInputText.trim() && parsedQuickCoords.success && (
+                      <div className="flex items-center justify-between bg-base-100 p-2 rounded-xl border border-base-300 text-xs shadow-2xs">
+                        <div className="space-y-0.5">
+                          <div className="text-emerald-600 dark:text-emerald-400 font-mono font-bold flex items-center gap-1 text-[11px]">
+                            <span>✓ Coordenadas identificadas:</span>
+                          </div>
+                          <div className="font-mono text-[11px] text-base-content/80">
+                            Lat: <strong>{parsedQuickCoords.lat.toFixed(6)}</strong> | Lng: <strong>{parsedQuickCoords.lng.toFixed(6)}</strong>
+                          </div>
+                        </div>
+                        <a
+                          href={getGoogleMapsUrl(parsedQuickCoords.lat, parsedQuickCoords.lng)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-2xs btn-outline btn-primary rounded-lg text-[10px] font-bold"
+                          title="Abrir no Google Maps para conferência visual"
+                        >
+                          👁️ Ver no Maps
+                        </a>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCoordBoxOpen(false);
+                          setCoordInputText('');
+                          setCoordError('');
+                        }}
+                        className="btn btn-xs btn-ghost text-xs"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveManualCoordinates}
+                        disabled={!parsedQuickCoords.success || isSavingCoords}
+                        className="btn btn-xs btn-primary font-bold text-xs rounded-xl gap-1 shadow-xs"
+                      >
+                        {isSavingCoords ? (
+                          <span className="loading loading-spinner loading-xs"></span>
+                        ) : (
+                          <span>💾</span>
+                        )}
+                        Salvar Posição
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* BANNER DE LOCALIZAÇÃO GPS PENDENTE (ORIGEM ERP) */}
@@ -912,14 +1077,23 @@ export default function ClientDrawer({
                   </span>
                 </div>
               </div>
-              <button
-                onClick={handleFixCurrentGPS}
-                disabled={isFixingGps}
-                className="btn btn-xs btn-warning font-bold gap-1 rounded-xl shadow-xs shrink-0 self-end sm:self-center"
-                title="Salva a latitude/longitude exata de onde você está agora como endereço do salão"
-              >
-                <span>📱</span> {isFixingGps ? 'Obtendo GPS...' : 'Fixar Meu GPS Aqui'}
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                <button
+                  onClick={() => setIsCoordBoxOpen(true)}
+                  className="btn btn-xs btn-outline btn-warning font-bold gap-1 rounded-xl shadow-xs"
+                  title="Digitar coordenadas ou colar link do Google Maps"
+                >
+                  <span>🌐</span> Por Coordenada
+                </button>
+                <button
+                  onClick={handleFixCurrentGPS}
+                  disabled={isFixingGps}
+                  className="btn btn-xs btn-warning font-bold gap-1 rounded-xl shadow-xs"
+                  title="Salva a latitude/longitude exata de onde você está agora como endereço do salão"
+                >
+                  <span>📱</span> {isFixingGps ? 'Obtendo GPS...' : 'Fixar Meu GPS Aqui'}
+                </button>
+              </div>
             </div>
           )}
 
