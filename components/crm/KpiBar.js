@@ -11,7 +11,11 @@ export default function KpiBar({
   activeStalledFilter,
   onToggleStalledFilter,
   funnelFilter,
-  onSelectFunnelFilter
+  onSelectFunnelFilter,
+  activePendingGpsFilter,
+  onTogglePendingGpsFilter,
+  onOpenPendingModal,
+  pendingGpsCount: propPendingGpsCount
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -68,6 +72,11 @@ export default function KpiBar({
 
   // 8. Em Atraso ERP (Cobrança e Regularização)
   const emAtrasoCount = clients.filter((c) => c.boleto_atrasado === true || c.status_funil === 'em_atraso').length;
+
+  // 9. Localização GPS Pendente (Origem ERP)
+  const pendingGpsCount = propPendingGpsCount !== undefined
+    ? propPendingGpsCount
+    : clients.filter((c) => c.localizacao_pendente === true).length;
 
   return (
     <div className="bg-base-100/95 backdrop-blur-xs border-b border-base-200 px-3 py-1.5 z-10 shrink-0 transition-all">
@@ -241,6 +250,37 @@ export default function KpiBar({
             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-700 dark:text-rose-300">Cobrança</span>
           </div>
 
+          {/* Card 9: GPS Pendente (Origem ERP / Cadastro sem Coordenadas) */}
+          {pendingGpsCount > 0 && (
+            <div
+              onClick={onTogglePendingGpsFilter}
+              className={`cursor-pointer shrink-0 min-w-[130px] sm:min-w-0 p-2 rounded-xl border transition-all flex items-center justify-between ${
+                activePendingGpsFilter
+                  ? 'bg-amber-500 border-amber-500 text-white shadow-md ring-2 ring-amber-400/50'
+                  : 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/50 text-amber-800 dark:text-amber-300'
+              }`}
+              title="Filtrar salões com localização GPS pendente"
+            >
+              <div>
+                <span className="text-[10px] font-bold block leading-tight">
+                  📍 GPS Pendente
+                </span>
+                <span className="text-sm font-extrabold">{pendingGpsCount}</span>
+              </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onOpenPendingModal) onOpenPendingModal();
+                }}
+                className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/30 hover:bg-amber-500/50"
+                title="Abrir lista de salões pendentes"
+              >
+                Lista
+              </button>
+            </div>
+          )}
+
         </div>
       ) : (
         /* Linha compacta quando recolhido */
@@ -282,6 +322,20 @@ export default function KpiBar({
               <span className="flex items-center gap-1 font-semibold text-rose-500">
                 ⛔ {emAtrasoCount} em atraso
               </span>
+            </>
+          )}
+          {pendingGpsCount > 0 && (
+            <>
+              <span>•</span>
+              <button
+                onClick={onTogglePendingGpsFilter}
+                className={`flex items-center gap-1 font-bold text-amber-500 hover:underline cursor-pointer ${
+                  activePendingGpsFilter ? 'bg-amber-500/20 px-2 py-0.5 rounded-lg text-amber-400' : ''
+                }`}
+                title="Clique para filtrar apenas salões com localização pendente no mapa"
+              >
+                📍 {pendingGpsCount} GPS pendentes
+              </button>
             </>
           )}
         </div>

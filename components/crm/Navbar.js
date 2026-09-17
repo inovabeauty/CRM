@@ -8,6 +8,8 @@ export default function Navbar({
   onOpenDailyReport,
   onOpenTeamModal,
   onOpenPwaInstall,
+  onOpenPendingModal,
+  pendingCount = 0,
   selectedCity,
   onSelectCity,
   cities = [],
@@ -57,6 +59,24 @@ export default function Navbar({
       return () => clearTimeout(resetSearch);
     }
     const delaySearch = setTimeout(async () => {
+      const lower = term.toLowerCase();
+      // Atalho de busca inteligente para localização pendente
+      if (lower.includes('pendente') || lower === 'gps' || lower.includes('ajustar')) {
+        try {
+          const { data, error } = await supabase
+            .from('clientes')
+            .select('id, nome, latitude, longitude, categorias, whatsapp, status_funil, cidade, boleto_atrasado, data_ultima_compra, linha_interesse, melhor_dia_compra, observacoes, ultimas_compras, responsavel, instagram, telefone_alternativo, data_ultima_interacao, tipo_ultima_interacao, data_retorno, endereco, localizacao_pendente, erp_cliente_id, valor_total_comprado, qtd_compras')
+            .eq('localizacao_pendente', true)
+            .limit(40);
+          if (!error && data) {
+            setSearchResults(data);
+            return;
+          }
+        } catch (e) {
+          console.warn('Erro ao buscar pendentes:', e);
+        }
+      }
+
       try {
         const { data, error } = await supabase
           .from('clientes')
@@ -142,6 +162,19 @@ export default function Navbar({
               <span>📤</span> Fechamento
             </button>
 
+            {pendingCount > 0 && (
+              <button
+                type="button"
+                onClick={onOpenPendingModal}
+                className="btn btn-xs sm:btn-sm btn-ghost hover:bg-amber-500/15 border border-amber-500/40 text-amber-700 dark:text-amber-300 font-bold text-[11px] gap-1 shadow-xs rounded-xl"
+                title="Ver lista de salões com localização GPS pendente"
+              >
+                <span className="animate-bounce">📍</span>
+                <span>GPS Pendente</span>
+                <span className="badge badge-warning badge-xs font-mono">{pendingCount}</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={handleSyncErp}
@@ -202,6 +235,17 @@ export default function Navbar({
                   </button>
                 </li>
 
+                {pendingCount > 0 && (
+                  <li>
+                    <button onClick={onOpenPendingModal} className="flex items-center justify-between font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-500/10">
+                      <span className="flex items-center gap-2">
+                        <span>📍</span> Salões GPS Pendente
+                      </span>
+                      <span className="badge badge-warning badge-xs font-mono">{pendingCount}</span>
+                    </button>
+                  </li>
+                )}
+
                 {/* Itens móveis integrados */}
                 <li className="md:hidden">
                   <button onClick={onOpenDailyReport} className="flex items-center gap-2">
@@ -249,7 +293,7 @@ export default function Navbar({
             <span className="absolute left-3 text-base-content/50 text-xs pointer-events-none">🔍</span>
             <input
               type="text"
-              placeholder="Buscar salão, dona, bairro ou rua..."
+              placeholder="Buscar salão, dona, bairro ou digite 'pendente'..."
               className="input input-sm input-bordered w-full pl-8 pr-8 text-xs rounded-xl bg-base-200/60 focus:bg-base-100 transition-all border-base-300 placeholder:text-base-content/40"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

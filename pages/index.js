@@ -18,6 +18,7 @@ import ProfitCalculatorModal from '../components/crm/ProfitCalculatorModal';
 import DailyReportModal from '../components/crm/DailyReportModal';
 import TeamManagementModal from '../components/crm/TeamManagementModal';
 import PwaInstallPrompt from '../components/crm/PwaInstallPrompt';
+import PendingClientsModal from '../components/crm/PendingClientsModal';
 
 // Carregamento dinâmico do Leaflet para SSR compatível com Next.js
 const MapComponent = dynamic(() => import('../components/LeafletMap'), { 
@@ -60,6 +61,11 @@ export default function Home() {
   const [searchTarget, setSearchTarget] = useState(null);
   const [loadedClients, setLoadedClients] = useState([]);
   const [repositioningClient, setRepositioningClient] = useState(null);
+
+  // Estados de Salões Pendentes de Localização GPS (Origem ERP)
+  const [pendingGpsFilter, setPendingGpsFilter] = useState(false);
+  const [isPendingModalOpen, setIsPendingModalOpen] = useState(false);
+  const [allPendingClients, setAllPendingClients] = useState([]);
 
   // Estados dos Modais
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
@@ -112,6 +118,27 @@ export default function Home() {
     syncPendingInteractions();
 
     return () => window.removeEventListener('online', handleOnline);
+  }, []);
+
+  // Busca e monitoramento global de todos os salões com GPS pendente (Origem ERP)
+  useEffect(() => {
+    async function loadPendingClients() {
+      try {
+        const { data, error } = await supabase
+          .from('clientes')
+          .select('id, nome, latitude, longitude, categorias, whatsapp, status_funil, cidade, boleto_atrasado, data_ultima_compra, linha_interesse, melhor_dia_compra, observacoes, ultimas_compras, responsavel, instagram, telefone_alternativo, data_ultima_interacao, tipo_ultima_interacao, data_retorno, endereco, localizacao_pendente, erp_cliente_id, valor_total_comprado, qtd_compras')
+          .eq('localizacao_pendente', true)
+          .order('nome');
+        if (!error && data) {
+          setAllPendingClients(data);
+        }
+      } catch (e) {
+        console.warn('Erro ao carregar clientes pendentes:', e);
+      }
+    }
+    loadPendingClients();
+    window.addEventListener('refreshMap', loadPendingClients);
+    return () => window.removeEventListener('refreshMap', loadPendingClients);
   }, []);
 
 // Mapeamento canônico das cidades oficiais da praça comercial da Inova Beauty
@@ -464,6 +491,8 @@ function getCanonicalCity(rawCity) {
         onOpenDailyReport={() => setIsDailyReportModalOpen(true)}
         onOpenTeamModal={() => setIsTeamModalOpen(true)}
         onOpenPwaInstall={() => setIsPwaModalOpen(true)}
+        onOpenPendingModal={() => setIsPendingModalOpen(true)}
+        pendingCount={allPendingClients.length}
         selectedCity={selectedCity}
         onSelectCity={setSelectedCity}
         cities={displayedCities}
@@ -472,6 +501,9 @@ function getCanonicalCity(rawCity) {
         theme={theme}
         onToggleTheme={handleToggleTheme}
         onSelectClient={(client) => {
+          if (selectedCity && selectedCity !== client.cidade) {
+            setSelectedCity('');
+          }
           setSearchTarget(client);
           setSelectedClient(client);
         }}
@@ -487,6 +519,7 @@ function getCanonicalCity(rawCity) {
       {/* 2. Mini KPI Bar Retrátil (Radar Comercial) */}
       <KpiBar
         clients={loadedClients}
+        pendingGpsCount={allPendingClients.length}
         activeCardFilter={cardFilter}
         onToggleCardFilter={() => setCardFilter(!cardFilter)}
         activeRepurchaseFilter={repurchaseFilter}
@@ -497,12 +530,27 @@ function getCanonicalCity(rawCity) {
         onToggleStalledFilter={() => setStalledFilter(!stalledFilter)}
         funnelFilter={funnelFilter}
         onSelectFunnelFilter={setFunnelFilter}
+        activePendingGpsFilter={pendingGpsFilter}
+        onTogglePendingGpsFilter={() => {
+          const next = !pendingGpsFilter;
+          setPendingGpsFilter(next);
+          if (next && selectedCity) setSelectedCity('');
+        }}
+        onOpenPendingModal={() => setIsPendingModalOpen(true)}
       />
 
       {/* 3. Chips Táticos de Filtro (Categorias, Retornos, Negociações, Cartão, Recompra & Inadimplentes) */}
       <FilterChips
         categoryFilter={categoryFilter}
         onSelectCategory={setCategoryFilter}
+        activePendingGpsFilter={pendingGpsFilter}
+        onTogglePendingGpsFilter={() => {
+          const next = !pendingGpsFilter;
+          setPendingGpsFilter(next);
+          if (next && selectedCity) setSelectedCity('');
+        }}
+        pendingGpsCount={allPendingClients.length}
+        onOpenPendingModal={() => setIsPendingModalOpen(true)}
         activeCardFilter={cardFilter}
         onToggleCardFilter={() => setCardFilter(!cardFilter)}
         activeRepurchaseFilter={repurchaseFilter}
@@ -548,6 +596,7 @@ function getCanonicalCity(rawCity) {
           creditAlertFilter={creditAlertFilter}
           returnFilter={returnFilter}
           stalledFilter={stalledFilter}
+          pendingGpsFilter={pendingGpsFilter}
           searchTarget={searchTarget}
           onClientsLoaded={setLoadedClients}
           repositioningClient={repositioningClient}
@@ -639,6 +688,20 @@ function getCanonicalCity(rawCity) {
       <PwaInstallPrompt
         isOpen={isPwaModalOpen}
         onClose={() => setIsPwaModalOpen(false)}
+      />
+
+      {/* 14. Modal de Salões com Localização GPS Pendente (Origem ERP) */}
+      <PendingClientsModal
+        isOpen={isPendingModalOpen}
+        onClose={() => setIsPendingModalOpen(false)}
+        clients={allPendingClients}
+        onSelectClient={(client) => {
+          if (selectedCity && selectedCity !== client.cidade) {
+            setSelectedCity('');
+          }
+          setSearchTarget(client);
+          setSelectedClient(client);
+        }}
       />
 
     </div>

@@ -134,7 +134,7 @@ const normalizeCity = (str) =>
   str ? str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim() : '';
 
 // Manipulação de câmera e foco
-function MapController({ searchTarget, userLoc, radiusMode, clients, cityFilter, repositioningClient, flyToCoords }) {
+function MapController({ searchTarget, userLoc, radiusMode, clients, cityFilter, repositioningClient, flyToCoords, pendingGpsFilter }) {
   const map = useMap();
   const lastFittedCityRef = useRef(null);
   const lastSearchTargetIdRef = useRef(null);
@@ -167,6 +167,18 @@ function MapController({ searchTarget, userLoc, radiusMode, clients, cityFilter,
       lastRadiusTriggeredRef.current = false;
     }
   }, [radiusMode, userLoc, map]);
+
+  // Enquadramento automático quando o filtro de GPS Pendente é ativado
+  useEffect(() => {
+    if (pendingGpsFilter && clients && clients.length > 0) {
+      const pendingCoords = clients
+        .filter((c) => c.localizacao_pendente && c.latitude && c.longitude)
+        .map((c) => [parseFloat(c.latitude), parseFloat(c.longitude)]);
+      if (pendingCoords.length > 0) {
+        map.fitBounds(L.latLngBounds(pendingCoords), { padding: [40, 40], maxZoom: 13 });
+      }
+    }
+  }, [pendingGpsFilter, clients, map]);
 
   // Ajusta o enquadramento (bounds) em perfeita sincronia com a cidade selecionada
   useEffect(() => {
@@ -244,6 +256,7 @@ export default function LeafletMap({
   creditAlertFilter = false,
   returnFilter = false,
   stalledFilter = false,
+  pendingGpsFilter = false,
   searchTarget,
   onClientsLoaded,
   repositioningClient,
@@ -413,6 +426,10 @@ export default function LeafletMap({
 
   if (creditAlertFilter) {
     displayedClients = displayedClients.filter((c) => c.boleto_atrasado === true);
+  }
+
+  if (pendingGpsFilter) {
+    displayedClients = displayedClients.filter((c) => c.localizacao_pendente === true);
   }
 
   if (radiusMode && userLoc) {
@@ -598,6 +615,7 @@ export default function LeafletMap({
           cityFilter={cityFilter}
           repositioningClient={repositioningClient}
           flyToCoords={flyToCoords}
+          pendingGpsFilter={pendingGpsFilter}
         />
         
         <MapClickHandler 
