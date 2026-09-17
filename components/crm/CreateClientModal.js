@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { parseCoordinatesInput, getGoogleMapsUrl, formatCoordinates } from '../../lib/geoUtils';
+import { parseCoordinatesInput, getGoogleMapsUrl, formatCoordinates, maskBrazilianPhone } from '../../lib/geoUtils';
 
 const DEFAULT_CITIES = [
   'Caxias',
@@ -193,10 +193,10 @@ export default function CreateClientModal({
             </label>
             <input
               type="text"
-              placeholder="Ex: 5599981002000"
-              className="input input-sm input-bordered w-full text-xs"
+              placeholder="Ex: (99) 98100-2000"
+              className="input input-sm input-bordered w-full text-xs font-mono"
               value={form.whatsapp || ''}
-              onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
+              onChange={(e) => setForm({ ...form, whatsapp: maskBrazilianPhone(e.target.value) })}
             />
           </div>
         </div>

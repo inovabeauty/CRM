@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import ClientTimeline from './ClientTimeline';
 import { getCategoryEmoji } from '../../lib/categoryUtils';
-import { parseCoordinatesInput, getGoogleMapsUrl, formatCoordinates } from '../../lib/geoUtils';
+import { parseCoordinatesInput, getGoogleMapsUrl, formatCoordinates, maskBrazilianPhone } from '../../lib/geoUtils';
 
 export default function ClientDrawer({
   client,
@@ -146,6 +146,8 @@ export default function ClientDrawer({
       ...client,
       endereco: client.endereco || '',
       cidade: client.cidade || 'Caxias',
+      whatsapp: maskBrazilianPhone(client.whatsapp),
+      telefone_alternativo: maskBrazilianPhone(client.telefone_alternativo),
       latitude: client.latitude != null ? client.latitude.toString() : '',
       longitude: client.longitude != null ? client.longitude.toString() : '',
       localizacao_pendente: client.localizacao_pendente ?? false,
@@ -390,9 +392,10 @@ export default function ClientDrawer({
               <label className="label py-1"><span className="label-text font-bold text-xs">WhatsApp Real</span></label>
               <input
                 type="text"
-                className="input input-sm input-bordered w-full"
+                placeholder="Ex: (99) 98100-2000"
+                className="input input-sm input-bordered w-full font-mono text-xs"
                 value={profileForm.whatsapp || ''}
-                onChange={(e) => setProfileForm({ ...profileForm, whatsapp: e.target.value })}
+                onChange={(e) => setProfileForm({ ...profileForm, whatsapp: maskBrazilianPhone(e.target.value) })}
               />
             </div>
           </div>
@@ -412,9 +415,10 @@ export default function ClientDrawer({
               <label className="label py-1"><span className="label-text font-bold text-xs">Telefone Alternativo</span></label>
               <input
                 type="text"
-                className="input input-sm input-bordered w-full"
+                placeholder="Ex: (99) 98100-2000"
+                className="input input-sm input-bordered w-full font-mono text-xs"
                 value={profileForm.telefone_alternativo || ''}
-                onChange={(e) => setProfileForm({ ...profileForm, telefone_alternativo: e.target.value })}
+                onChange={(e) => setProfileForm({ ...profileForm, telefone_alternativo: maskBrazilianPhone(e.target.value) })}
               />
             </div>
           </div>
